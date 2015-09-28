@@ -11,21 +11,58 @@ Button buttonHandset(0, 1023);
 Button buttonRotate(0, 1023);
 Button buttonCounter(0, 1023);
 
-long currentMillis;
+boolean isGettingPhoneNumber;
+boolean isGettingDigit;
 
-void buttonLedHandler(telephone::ButtonState buttonState) {
-  if (buttonState == PRESSED) {
-    digitalWrite(LED_PIN, HIGH);
-  } else if (buttonState == RELEASED) {
-    digitalWrite(LED_PIN, LOW);
+int digitCounter;
+int digitValue;
+String phoneNumber;
+
+const int DIGITS_IN_PHONE_NUMBER = 11;
+
+void pickedUpHandler(telephone::ButtonState buttonState) {
+  isGettingPhoneNumber = buttonState == PRESSED;
+  if (isGettingPhoneNumber) {
+    phoneNumber = "";
+    digitCounter = 0;
+  } else {
+    isGettingDigit = false;
   }
 }
 
-void buttonSerialHandler(telephone::ButtonState buttonState) {
-  if (buttonState == PRESSED) {
-    Serial.println("PRESSED");
-  } else if (buttonState == RELEASED) {
-    Serial.println("RELEASED");
+void rotatingHandler(telephone::ButtonState buttonState) {
+  if (isGettingPhoneNumber) {
+    isGettingDigit = buttonState == PRESSED;
+    if (isGettingDigit) {
+      digitCounter++;
+      digitValue = 0;
+    } else {
+      if (digitValue == 10) {
+        digitValue = 0;
+      }
+      phoneNumber += String(digitValue);
+      if (digitCounter == DIGITS_IN_PHONE_NUMBER) {
+        makeCall();
+      }
+    }
+  }
+}
+
+void rotaryCounterHandler(telephone::ButtonState buttonState) {
+  if (isGettingDigit && (buttonState == RELEASED)) {
+    digitValue++;
+  }
+}
+
+void makeCall() {
+  updatePhoneNumberForRussia();
+  Serial.println("Phone number: " + phoneNumber);
+}
+
+void updatePhoneNumberForRussia() {
+  if (phoneNumber[0] == '8') {
+    phoneNumber[0] = '7';
+    phoneNumber = "+" + phoneNumber;
   }
 }
 
@@ -36,13 +73,13 @@ void setup() {
   pinMode(COUNTER_PIN, INPUT);
   pinMode(LED_PIN, OUTPUT);
   delay(100);
-  buttonHandset.setHandler(buttonLedHandler);
-  buttonRotate.setHandler(buttonLedHandler);
-  buttonCounter.setHandler(buttonSerialHandler);
+  buttonHandset.setHandler(pickedUpHandler);
+  buttonRotate.setHandler(rotatingHandler);
+  buttonCounter.setHandler(rotaryCounterHandler);
 }
 
 void loop() {
-  currentMillis = millis();
+  const long currentMillis = millis();
   buttonHandset.refresh(analogRead(HANDSET_PIN), currentMillis);
   buttonRotate.refresh(analogRead(ROTATE_PIN), currentMillis);
   buttonCounter.refresh(analogRead(COUNTER_PIN), currentMillis);
