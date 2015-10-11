@@ -37,7 +37,6 @@ void pickedUpHandler(telephone::ButtonState buttonState) {
     Serial.println("Headset down");
     isGettingDigit = false;
     if (isTalking) {
-      gsmVoiceCall.hangCall();
       isTalking = false;
     }
   }
@@ -87,6 +86,9 @@ boolean isValidPhoneNumber() {
 }
 
 void makeCall() {
+  if (isTalking) {
+    return;
+  }
   Serial.println("Making call: " + phoneNumber);
   updatePhoneNumberForRussia();
   phoneNumber.toCharArray(phoneNumberChars, phoneNumber.length() + 1);
@@ -96,12 +98,16 @@ void makeCall() {
     while (isTalking && (gsmVoiceCall.getvoiceCallStatus() == TALKING)) {
       refreshButtons();
     }
+    gsmVoiceCall.hangCall();
     // ПРОВЕРИТЬ: когда трубку кладут "тут" и когда кладут "там".
     // ПРОВЕРИТЬ: когда занято.
   }
 }
 
 void sendDigit() {
+  if (gsmVoiceCall.getvoiceCallStatus() != TALKING) {
+    return;
+  }
   if (phoneNumber == "") {
     return;
   }
