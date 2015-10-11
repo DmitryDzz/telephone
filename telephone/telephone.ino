@@ -17,12 +17,10 @@ boolean isGettingPhoneNumber;
 boolean isGettingDigit;
 boolean isTalking;
 
-int digitCounter;
 int digitValue;
 String phoneNumber;
 
-const int DIGITS_IN_PHONE_NUMBER = 11;
-char phoneNumberChars[DIGITS_IN_PHONE_NUMBER + 1];
+char phoneNumberChars[20]; // 20 - "big" number. Greater than any pnone number.
 
 //---- gsm begin
 #define SIM_PIN_NUMBER ""
@@ -33,9 +31,10 @@ GSMVoiceCall gsmVoiceCall;
 void pickedUpHandler(telephone::ButtonState buttonState) {
   isGettingPhoneNumber = buttonState == PRESSED;
   if (isGettingPhoneNumber) {
+    Serial.println("Headset up");
     phoneNumber = "";
-    digitCounter = 0;
   } else {
+    Serial.println("Headset down");
     isGettingDigit = false;
     if (isTalking) {
       gsmVoiceCall.hangCall();
@@ -48,14 +47,18 @@ void rotatingHandler(telephone::ButtonState buttonState) {
   if (isGettingPhoneNumber) {
     isGettingDigit = buttonState == PRESSED;
     if (isGettingDigit) {
-      digitCounter++;
       digitValue = 0;
     } else {
-      if (digitValue == 10) {
+      if (digitValue > 0) {
+        if (digitValue == 10) {
+          digitValue = 0;
+        }
+        phoneNumber += String(digitValue);
         digitValue = 0;
       }
-      phoneNumber += String(digitValue);
-      if (digitCounter == DIGITS_IN_PHONE_NUMBER) {
+      if (isTalking) {
+        sendDigit();
+      } else if (isValidPhoneNumber()) {
         makeCall();
       }
     }
@@ -68,15 +71,42 @@ void rotaryCounterHandler(telephone::ButtonState buttonState) {
   }
 }
 
+// Adaptered for Russian Beeline operator.
+// Modify this function for your country or operator.
+boolean isValidPhoneNumber() {
+  int phoneNumberSize = phoneNumber.length();
+  if (phoneNumberSize == 4) { // Russian Beeline mobile operator short number: 06XX
+    return (phoneNumber[0] == '0') && (phoneNumber[1] == '6');
+  } else if (phoneNumberSize == 11) { // 8xxxxxxxxxx
+    return phoneNumber[0] == '8';
+  } else if (phoneNumberSize == 12) { // +7XXXxxxxxxx call to Russia
+    return (phoneNumber[0] == '+') && (phoneNumber[1] == '7');
+  } else {
+    return false;
+  }
+}
+
 void makeCall() {
+  Serial.println("Making call: " + phoneNumber);
   updatePhoneNumberForRussia();
-  phoneNumber.toCharArray(phoneNumberChars, DIGITS_IN_PHONE_NUMBER + 1);
+  phoneNumber.toCharArray(phoneNumberChars, phoneNumber.length() + 1);
+  phoneNumber = "";
   if (gsmVoiceCall.voiceCall(phoneNumberChars)) {
     isTalking = true;
-    while (isTalking && (gsmVoiceCall.getvoiceCallStatus() == TALKING));
+    while (isTalking && (gsmVoiceCall.getvoiceCallStatus() == TALKING)) {
+      refreshButtons();
+    }
     // ПРОВЕРИТЬ: когда трубку кладут "тут" и когда кладут "там".
     // ПРОВЕРИТЬ: когда занято.
   }
+}
+
+void sendDigit() {
+  if (phoneNumber == "") {
+    return;
+  }
+  Serial.println("Sending digit: " + phoneNumber);
+  phoneNumber = "";
 }
 
 void updatePhoneNumberForRussia() {
@@ -84,6 +114,13 @@ void updatePhoneNumberForRussia() {
     phoneNumber[0] = '7';
     phoneNumber = "+" + phoneNumber;
   }
+}
+
+void refreshButtons() {
+  const long currentMillis = millis();
+  buttonHandset.refresh(analogRead(HANDSET_PIN), currentMillis);
+  buttonRotate.refresh(analogRead(ROTATE_PIN), currentMillis);
+  buttonCounter.refresh(analogRead(COUNTER_PIN), currentMillis);
 }
 
 void setup() {
@@ -104,19 +141,17 @@ void setup() {
   buttonRotate.setHandler(rotatingHandler);
   buttonCounter.setHandler(rotaryCounterHandler);
   
+  Serial.print("Connecting..");
   while (true) {
+    Serial.print(".");
     if (gsmAccess.begin(SIM_PIN_NUMBER) == GSM_READY) {
+      Serial.println("done");
       break;
     }
-    delay(5000);
+    delay(1000);
   }
-  
-  Serial.println("Connected to network");
 }
 
 void loop() {
-  const long currentMillis = millis();
-  buttonHandset.refresh(analogRead(HANDSET_PIN), currentMillis);
-  buttonRotate.refresh(analogRead(ROTATE_PIN), currentMillis);
-  buttonCounter.refresh(analogRead(COUNTER_PIN), currentMillis);
+  refreshButtons();
 }
