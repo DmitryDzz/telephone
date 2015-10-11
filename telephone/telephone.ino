@@ -6,12 +6,18 @@ using namespace telephone;
 const int HANDSET_PIN = A0;
 const int ROTATE_PIN = A1;
 const int COUNTER_PIN = A2;
+const int ASTERISK_PIN = A3;
+const int NUMBER_SIGN_PIN = A4;
+const int PLUS_PIN = A5;
 const int LED_PIN = 13;
 const int AUTO_START_GSM_PIN = 8;
 
 Button buttonHandset(0, 1023);
 Button buttonRotate(0, 1023);
 Button buttonCounter(0, 1023);
+Button buttonAsterisk(0, 1023);
+Button buttonNumberSign(0, 1023);
+Button buttonPlus(0, 1023);
 
 boolean isGettingPhoneNumber;
 boolean isGettingDigit;
@@ -67,6 +73,36 @@ void rotatingHandler(telephone::ButtonState buttonState) {
 void rotaryCounterHandler(telephone::ButtonState buttonState) {
   if (isGettingDigit && (buttonState == RELEASED)) {
     digitValue++;
+  }
+}
+
+void asteriskHandler(telephone::ButtonState buttonState) {
+  if (buttonState == PRESSED) {
+    Serial.println("Asterisk pressed");
+    addSymbolToPhoneNumber("*");
+  }
+}
+
+void numberSignHandler(telephone::ButtonState buttonState) {
+  if (buttonState == PRESSED) {
+    Serial.println("Number sign pressed");
+    addSymbolToPhoneNumber("#");
+  }
+}
+
+void plusHandler(telephone::ButtonState buttonState) {
+  if (buttonState == PRESSED) {
+    Serial.println("Plus pressed");
+    addSymbolToPhoneNumber("+");
+  }
+}
+
+void addSymbolToPhoneNumber(String symbol) {
+  if (isGettingPhoneNumber && (!isGettingDigit)) {
+    phoneNumber += symbol;
+    if (isTalking) {
+        sendDigit();
+    }
   }
 }
 
@@ -131,6 +167,9 @@ void refreshButtons() {
   buttonHandset.refresh(analogRead(HANDSET_PIN), currentMillis);
   buttonRotate.refresh(analogRead(ROTATE_PIN), currentMillis);
   buttonCounter.refresh(analogRead(COUNTER_PIN), currentMillis);
+  buttonAsterisk.refresh(analogRead(ASTERISK_PIN), currentMillis);
+  buttonNumberSign.refresh(analogRead(NUMBER_SIGN_PIN), currentMillis);
+  buttonPlus.refresh(analogRead(PLUS_PIN), currentMillis);
 }
 
 void setup() {
@@ -142,6 +181,9 @@ void setup() {
   pinMode(HANDSET_PIN, INPUT);
   pinMode(ROTATE_PIN, INPUT);
   pinMode(COUNTER_PIN, INPUT);
+  pinMode(ASTERISK_PIN, INPUT);
+  pinMode(NUMBER_SIGN_PIN, INPUT);
+  pinMode(PLUS_PIN, INPUT);
   pinMode(LED_PIN, OUTPUT);
   pinMode(AUTO_START_GSM_PIN, OUTPUT);
   delay(100);
@@ -150,6 +192,9 @@ void setup() {
   buttonHandset.setHandler(pickedUpHandler);
   buttonRotate.setHandler(rotatingHandler);
   buttonCounter.setHandler(rotaryCounterHandler);
+  buttonAsterisk.setHandler(asteriskHandler);
+  buttonNumberSign.setHandler(numberSignHandler);
+  buttonPlus.setHandler(plusHandler);
   
   Serial.print("Connecting..");
   while (true) {
