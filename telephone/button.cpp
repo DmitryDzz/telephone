@@ -48,9 +48,9 @@ void Button::refresh(int value, long millis)
 ButtonState Button::getButtonState(int value)
 {
   if (this->middleValue > 0) {
-    return value <= this->middleValue ? RELEASED : PRESSED;
+    return value <= this->middleValue ? PRESSED : RELEASED;
   } else {
-    return value <= -this->middleValue ? PRESSED : RELEASED;
+    return value <= -this->middleValue ? RELEASED : PRESSED;
   }
 }
 
