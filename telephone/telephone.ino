@@ -99,7 +99,6 @@ void makeCall() {
       refreshButtons();
     }
     gsmVoiceCall.hangCall();
-    // ПРОВЕРИТЬ: когда трубку кладут "тут" и когда кладут "там".
     // ПРОВЕРИТЬ: когда занято.
   }
 }
@@ -111,7 +110,12 @@ void sendDigit() {
   if (phoneNumber == "") {
     return;
   }
-  Serial.println("Sending digit: " + phoneNumber);
+
+  String atCommand = "AT+VTS=\"" + phoneNumber + "\"";
+  Serial.println("Sending digit: " + phoneNumber + " at command: " + atCommand);
+
+  theGSM3ShieldV1ModemCore.println(atCommand);
+  
   phoneNumber = "";
 }
 
