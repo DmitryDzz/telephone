@@ -1,4 +1,5 @@
 #include "button.h"
+#include "ring.h"
 #include <GSM.h>
 
 using namespace telephone;
@@ -9,7 +10,11 @@ const int COUNTER_PIN = A2;
 const int ASTERISK_PIN = A3;
 const int NUMBER_SIGN_PIN = A4;
 const int PLUS_PIN = A5;
+const int RING_PIN = 4;
 const int AUTO_START_GSM_PIN = 8;
+
+const int RING_FREQ = 1000; // Should be 25Hz, but 31 is the arduino's minimum.
+// 1000 Hz is just for beeper.
 
 Button buttonHandset(0, 1023);
 Button buttonRotate(0, 1023);
@@ -18,6 +23,8 @@ Button buttonAsterisk(0, 1023);
 Button buttonNumberSign(0, 1023);
 Button buttonPlus(0, 1023);
 Button incomingCall(false, true);
+
+Ring ring(1000, 4000);
 
 boolean isHeadsetUp;
 boolean isGettingDigit;
@@ -110,8 +117,18 @@ void addSymbolToPhoneNumber(String symbol) {
 void incomingCallHandler(telephone::ButtonState buttonState) {
   if (buttonState == PRESSED) {
     Serial.println("Incoming call started");
+    ring.start(millis());
   } else {
     Serial.println("Incoming call ended");
+    ring.stop();
+  }
+}
+
+void ringHandler(boolean state) {
+  if (state) {
+    tone(RING_PIN, RING_FREQ);
+  } else {
+    noTone(RING_PIN);
   }
 }
 
@@ -141,7 +158,7 @@ void makeCall() {
   if (gsmVoiceCall.voiceCall(phoneNumberChars)) {
     isTalking = true;
     while (isTalking && (gsmVoiceCall.getvoiceCallStatus() == TALKING)) {
-      refreshButtons();
+      refreshButtons(millis());
     }
     isTalking = false;
     gsmVoiceCall.hangCall();
@@ -172,8 +189,7 @@ void updatePhoneNumberForRussia() {
   }
 }
 
-void refreshButtons() {
-  const long currentMillis = millis();
+void refreshButtons(long currentMillis) {
   buttonHandset.refresh(analogRead(HANDSET_PIN), currentMillis);
   buttonRotate.refresh(analogRead(ROTATE_PIN), currentMillis);
   buttonCounter.refresh(analogRead(COUNTER_PIN), currentMillis);
@@ -195,6 +211,7 @@ void setup() {
   pinMode(ASTERISK_PIN, INPUT);
   pinMode(NUMBER_SIGN_PIN, INPUT);
   pinMode(PLUS_PIN, INPUT);
+  pinMode(RING_PIN, OUTPUT);
   pinMode(AUTO_START_GSM_PIN, OUTPUT);
   delay(100);
   digitalWrite(AUTO_START_GSM_PIN, HIGH);
@@ -206,6 +223,8 @@ void setup() {
   buttonNumberSign.setHandler(numberSignHandler);
   buttonPlus.setHandler(plusHandler);
   incomingCall.setHandler(incomingCallHandler);
+
+  ring.setHandler(ringHandler);
   
   Serial.print("Connecting..");
   while (true) {
@@ -219,5 +238,7 @@ void setup() {
 }
 
 void loop() {
-  refreshButtons();
+  const long currentMillis = millis();
+  refreshButtons(currentMillis);
+  ring.refresh(currentMillis);
 }
