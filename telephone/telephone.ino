@@ -9,7 +9,6 @@ const int COUNTER_PIN = A2;
 const int ASTERISK_PIN = A3;
 const int NUMBER_SIGN_PIN = A4;
 const int PLUS_PIN = A5;
-const int LED_PIN = 13;
 const int AUTO_START_GSM_PIN = 8;
 
 Button buttonHandset(0, 1023);
@@ -18,8 +17,9 @@ Button buttonCounter(0, 1023);
 Button buttonAsterisk(0, 1023);
 Button buttonNumberSign(0, 1023);
 Button buttonPlus(0, 1023);
+Button incomingCall(false, true);
 
-boolean isGettingPhoneNumber;
+boolean isHeadsetUp;
 boolean isGettingDigit;
 boolean isTalking;
 
@@ -35,8 +35,8 @@ GSMVoiceCall gsmVoiceCall;
 //---- gsm end
 
 void pickedUpHandler(telephone::ButtonState buttonState) {
-  isGettingPhoneNumber = buttonState == PRESSED;
-  if (isGettingPhoneNumber) {
+  isHeadsetUp = buttonState == PRESSED;
+  if (isHeadsetUp) {
     Serial.println("Headset up");
     phoneNumber = "";
   } else {
@@ -44,12 +44,13 @@ void pickedUpHandler(telephone::ButtonState buttonState) {
     isGettingDigit = false;
     if (isTalking) {
       isTalking = false;
+      gsmVoiceCall.hangCall();
     }
   }
 }
 
 void rotatingHandler(telephone::ButtonState buttonState) {
-  if (isGettingPhoneNumber) {
+  if (isHeadsetUp) {
     isGettingDigit = buttonState == PRESSED;
     if (isGettingDigit) {
       digitValue = 0;
@@ -98,11 +99,19 @@ void plusHandler(telephone::ButtonState buttonState) {
 }
 
 void addSymbolToPhoneNumber(String symbol) {
-  if (isGettingPhoneNumber && (!isGettingDigit)) {
+  if (isHeadsetUp && (!isGettingDigit)) {
     phoneNumber += symbol;
     if (isTalking) {
         sendDigit();
     }
+  }
+}
+
+void incomingCallHandler(telephone::ButtonState buttonState) {
+  if (buttonState == PRESSED) {
+    Serial.println("Incoming call started");
+  } else {
+    Serial.println("Incoming call ended");
   }
 }
 
@@ -134,6 +143,7 @@ void makeCall() {
     while (isTalking && (gsmVoiceCall.getvoiceCallStatus() == TALKING)) {
       refreshButtons();
     }
+    isTalking = false;
     gsmVoiceCall.hangCall();
     // ПРОВЕРИТЬ: когда занято.
   }
@@ -170,6 +180,7 @@ void refreshButtons() {
   buttonAsterisk.refresh(analogRead(ASTERISK_PIN), currentMillis);
   buttonNumberSign.refresh(analogRead(NUMBER_SIGN_PIN), currentMillis);
   buttonPlus.refresh(analogRead(PLUS_PIN), currentMillis);
+  incomingCall.refresh(gsmVoiceCall.getvoiceCallStatus() == RECEIVINGCALL, currentMillis);
 }
 
 void setup() {
@@ -184,7 +195,6 @@ void setup() {
   pinMode(ASTERISK_PIN, INPUT);
   pinMode(NUMBER_SIGN_PIN, INPUT);
   pinMode(PLUS_PIN, INPUT);
-  pinMode(LED_PIN, OUTPUT);
   pinMode(AUTO_START_GSM_PIN, OUTPUT);
   delay(100);
   digitalWrite(AUTO_START_GSM_PIN, HIGH);
@@ -195,6 +205,7 @@ void setup() {
   buttonAsterisk.setHandler(asteriskHandler);
   buttonNumberSign.setHandler(numberSignHandler);
   buttonPlus.setHandler(plusHandler);
+  incomingCall.setHandler(incomingCallHandler);
   
   Serial.print("Connecting..");
   while (true) {
