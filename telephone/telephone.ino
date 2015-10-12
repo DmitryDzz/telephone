@@ -13,8 +13,9 @@ const int PLUS_PIN = A5;
 const int RING_PIN = 4;
 const int AUTO_START_GSM_PIN = 8;
 
-const int RING_FREQ = 1000; // Should be 25Hz, but 31 is the arduino's minimum.
+// Should be 25Hz, but 31 is the arduino's minimum.
 // 1000 Hz is just for beeper.
+const int RING_FREQ = 1000;
 
 Button buttonHandset(0, 1023);
 Button buttonRotate(0, 1023);
