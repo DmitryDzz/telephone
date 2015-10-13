@@ -10,7 +10,8 @@ const int COUNTER_PIN = A2;
 const int ASTERISK_PIN = A3;
 const int NUMBER_SIGN_PIN = A4;
 const int PLUS_PIN = A5;
-const int RING_PIN = 4;
+const int NO_NETWORK_LED_PIN = 13;
+const int RING_PIN = 5;
 const int AUTO_START_GSM_PIN = 8;
 
 // Should be 25Hz, but 31 is the arduino's minimum.
@@ -229,9 +230,11 @@ void setup() {
   pinMode(ASTERISK_PIN, INPUT);
   pinMode(NUMBER_SIGN_PIN, INPUT);
   pinMode(PLUS_PIN, INPUT);
+  pinMode(NO_NETWORK_LED_PIN, OUTPUT);
   pinMode(RING_PIN, OUTPUT);
   pinMode(AUTO_START_GSM_PIN, OUTPUT);
   delay(100);
+  digitalWrite(NO_NETWORK_LED_PIN, HIGH);
   digitalWrite(AUTO_START_GSM_PIN, HIGH);
 
   buttonHandset.setHandler(pickedUpHandler);
@@ -253,6 +256,7 @@ void setup() {
     }
     delay(1000);
   }
+  digitalWrite(NO_NETWORK_LED_PIN, LOW);
 }
 
 void loop() {
