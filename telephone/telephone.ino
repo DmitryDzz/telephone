@@ -15,7 +15,7 @@ const int AUTO_START_GSM_PIN = 8;
 
 // Should be 25Hz, but 31 is the arduino's minimum.
 // 1000 Hz is just for beeper.
-const int RING_FREQ = 1000;
+const int RING_FREQ = 40;
 
 Button buttonHandset(0, 1023);
 Button buttonRotate(0, 1023);
@@ -30,29 +30,40 @@ Ring ring(1000, 4000);
 boolean isHeadsetUp;
 boolean isGettingDigit;
 boolean isTalking;
+boolean hasIncomingCall;
 
 int digitValue;
 String phoneNumber;
 
 char phoneNumberChars[20]; // 20 - "big" number. Greater than any pnone number.
 
-//---- gsm begin
 #define SIM_PIN_NUMBER ""
 GSM gsmAccess;
 GSMVoiceCall gsmVoiceCall;
-//---- gsm end
 
 void pickedUpHandler(telephone::ButtonState buttonState) {
   isHeadsetUp = buttonState == PRESSED;
   if (isHeadsetUp) {
-    Serial.println("Headset up");
-    phoneNumber = "";
+    if (!isTalking) {
+      Serial.println("Headset up");
+      phoneNumber = "";
+      if (hasIncomingCall) {
+        noTone(RING_PIN);
+        if (gsmVoiceCall.answerCall()) {
+          isTalking = true;
+          while (isTalking && (gsmVoiceCall.getvoiceCallStatus() == TALKING)) {
+            refreshButtons(millis());
+          }
+          isTalking = false;
+          gsmVoiceCall.hangCall();
+        }
+      }
+    }
   } else {
     Serial.println("Headset down");
     isGettingDigit = false;
     if (isTalking) {
       isTalking = false;
-      gsmVoiceCall.hangCall();
     }
   }
 }
@@ -117,11 +128,17 @@ void addSymbolToPhoneNumber(String symbol) {
 
 void incomingCallHandler(telephone::ButtonState buttonState) {
   if (buttonState == PRESSED) {
-    Serial.println("Incoming call started");
-    ring.start(millis());
+    if (!isHeadsetUp) {
+      hasIncomingCall = true;
+      ring.start(millis());
+      gsmVoiceCall.retrieveCallingNumber(phoneNumberChars, 20);
+      Serial.print("Incoming call: ");
+      Serial.println(phoneNumberChars);
+    }
   } else {
-    Serial.println("Incoming call ended");
-    ring.stop();
+    if (hasIncomingCall) {
+      ring.stop();
+    }
   }
 }
 
