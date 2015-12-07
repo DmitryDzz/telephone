@@ -1,3 +1,8 @@
+# My files and directories to ignore
+booster_generator/
+booster_pwm/
+booster_test/
+
 # Compiled Object files
 *.slo
 *.lo
@@ -26,3 +31,6 @@
 *.exe
 *.out
 *.app
+
+# Other
+*.*~
