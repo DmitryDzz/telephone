@@ -14,7 +14,7 @@
 // Base ticks (100 kHz ticks):
 const uint8_t PULSE_COUNTER = 160;
 // 4 kHz signal:
-const long HIGH_FREQ_UP_TICKS = 8;
+const long HIGH_FREQ_UP_TICKS = 4;
 const long HIGH_FREQ_DOWN_TICKS = 25;
 // 25 Hz signal:
 const long LOW_FREQ_UP_TICKS = 2000;
