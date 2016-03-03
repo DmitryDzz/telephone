@@ -15,11 +15,16 @@
 const uint8_t PULSE_COUNTER = 160;
 // 4 kHz signal (HIGH_FREQ_UP_TICKS=5, HIGH_FREQ_DOWN_TICKS=25):
 // 4.2 kHz, 89.6% duty cycle (HIGH_FREQ_UP_TICKS=3, HIGH_FREQ_DOWN_TICKS=21):
+const long HIGH_FREQ_PERIOD_TICKS = 26;
 const long HIGH_FREQ_UP_TICKS = 2;
-const long HIGH_FREQ_DOWN_TICKS = 24;
+const long HIGH_FREQ_DOWN_TICKS = HIGH_FREQ_PERIOD_TICKS - HIGH_FREQ_UP_TICKS;
 // 25 Hz 50% signal (LOW_FREQ_UP_TICKS=2000, LOW_FREQ_DOWN_TICKS=4000):
-const long LOW_FREQ_UP_TICKS = 2000;
-const long LOW_FREQ_DOWN_TICKS = 4000;
+const long LOW_FREQ_PERIOD_TICKS = 4000;
+const long LOW_FREQ_ZERO_DELAY_TICKS = 100;
+const long LOW_FREQ_UP_A_TICKS = LOW_FREQ_ZERO_DELAY_TICKS;
+const long LOW_FREQ_DOWN_A_TICKS = LOW_FREQ_PERIOD_TICKS / 2 - LOW_FREQ_ZERO_DELAY_TICKS;
+const long LOW_FREQ_UP_B_TICKS = LOW_FREQ_PERIOD_TICKS / 2 + LOW_FREQ_ZERO_DELAY_TICKS;
+const long LOW_FREQ_DOWN_B_TICKS = LOW_FREQ_PERIOD_TICKS - LOW_FREQ_ZERO_DELAY_TICKS;
 
 bool enabled;
 
@@ -33,17 +38,20 @@ uint8_t timsk2;
 int highFreqPin;
 long highFreqTicks;
 
-int lowFreqPin;
+int lowFreqPinA;
+int lowFreqPinB;
 long lowFreqTicks;
 
 
-void Bell::initialize(const int highFrequencyPin, const int lowFrequencyPin) {
+void Bell::initialize(const int highFrequencyPin, const int lowFrequencyPinA, const int lowFrequencyPinB) {
   enabled = false;
   
   highFreqPin = highFrequencyPin;
-  lowFreqPin = lowFrequencyPin;
+  lowFreqPinA = lowFrequencyPinA;
+  lowFreqPinB = lowFrequencyPinB;
   pinMode(highFreqPin, OUTPUT);
-  pinMode(lowFreqPin, OUTPUT);
+  pinMode(lowFreqPinA, OUTPUT);
+  pinMode(lowFreqPinB, OUTPUT);
 }
 
 /*
@@ -75,7 +83,8 @@ void Bell::startSound() {
   highFreqTicks = 0;
   lowFreqTicks = 0;
   digitalLow(highFreqPin);
-  digitalLow(lowFreqPin);
+  digitalLow(lowFreqPinA);
+  digitalLow(lowFreqPinB);
 
   sei();//allow interrupts
 
@@ -92,7 +101,8 @@ void Bell::stopSound() {
   sei();
 
   digitalLow(highFreqPin);
-  digitalLow(lowFreqPin);
+  digitalLow(lowFreqPinA);
+  digitalLow(lowFreqPinB);
 
   enabled = false;
 }
@@ -123,10 +133,17 @@ ISR(TIMER2_COMPA_vect) {
   }
   
   lowFreqTicks++;
-  if (lowFreqTicks == LOW_FREQ_UP_TICKS) {
-    digitalHigh(lowFreqPin);
-  } else if (lowFreqTicks == LOW_FREQ_DOWN_TICKS) {
-    digitalLow(lowFreqPin);
+  if (lowFreqTicks == LOW_FREQ_UP_A_TICKS) {
+    digitalHigh(lowFreqPinA);
+  } else if (lowFreqTicks == LOW_FREQ_DOWN_A_TICKS) {
+    digitalLow(lowFreqPinA);
+  }
+  if (lowFreqTicks == LOW_FREQ_UP_B_TICKS) {
+    digitalHigh(lowFreqPinB);
+  } else if (lowFreqTicks == LOW_FREQ_DOWN_B_TICKS) {
+    digitalLow(lowFreqPinB);
+  }
+  if (lowFreqTicks == LOW_FREQ_PERIOD_TICKS) {
     lowFreqTicks = 0;
   }
 }

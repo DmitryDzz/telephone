@@ -6,7 +6,7 @@
 class Bell
 {
   public:
-    static void initialize(const int highFrequencyPin, const int lowFrequencyPin);
+    static void initialize(const int highFrequencyPin, const int lowFrequencyPinA, const int lowFrequencyPinB);
     static void startSound();
     static void stopSound();
   private:
