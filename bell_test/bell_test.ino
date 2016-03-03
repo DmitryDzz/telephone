@@ -20,7 +20,7 @@ void setup() {
 
 void loop() {
   if (started && (millis() - startMillis >= DURATION)) {
-    Bell::stopSound();
+//    Bell::stopSound();
     started = false;
     Serial.println("stopped");
   }

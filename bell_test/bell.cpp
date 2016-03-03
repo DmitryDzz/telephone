@@ -11,11 +11,12 @@
 #define digitalHigh(P) *(portOfPin(P)) |= pinMask(P)
 
 
-// Base ticks (100 kHz ticks):
+// Base ticks (100 kHz ticks = 160):
 const uint8_t PULSE_COUNTER = 160;
 // 4 kHz signal (HIGH_FREQ_UP_TICKS=5, HIGH_FREQ_DOWN_TICKS=25):
+// 4.2 kHz, 89.6% duty cycle (HIGH_FREQ_UP_TICKS=3, HIGH_FREQ_DOWN_TICKS=21):
 const long HIGH_FREQ_UP_TICKS = 2;
-const long HIGH_FREQ_DOWN_TICKS = 25;
+const long HIGH_FREQ_DOWN_TICKS = 24;
 // 25 Hz 50% signal (LOW_FREQ_UP_TICKS=2000, LOW_FREQ_DOWN_TICKS=4000):
 const long LOW_FREQ_UP_TICKS = 2000;
 const long LOW_FREQ_DOWN_TICKS = 4000;
