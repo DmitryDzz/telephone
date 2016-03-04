@@ -13,17 +13,21 @@
 
 // Base ticks (100 kHz ticks = 160):
 const uint8_t PULSE_COUNTER = 160;
+// 0.25 Hz 50% beep signal (4 seconds beep, 4 seconds silince):
+const long BEEP_FREQ_PERIOD_TICKS = 400000L;
+const long BEEP_FREQ_UP_TICKS = 0L;
+const long BEEP_FREQ_DOWN_TICKS = 160000L;
 // 4 kHz signal (HIGH_FREQ_UP_TICKS=5, HIGH_FREQ_DOWN_TICKS=25):
 // 4.2 kHz, 89.6% duty cycle (HIGH_FREQ_UP_TICKS=3, HIGH_FREQ_DOWN_TICKS=21):
-const long HIGH_FREQ_PERIOD_TICKS = 26;
-const long HIGH_FREQ_UP_TICKS = 2;
-const long HIGH_FREQ_DOWN_TICKS = HIGH_FREQ_PERIOD_TICKS - HIGH_FREQ_UP_TICKS;
+const long HIGH_FREQ_PERIOD_TICKS = 15L;
+const long HIGH_FREQ_UP_TICKS = 0L;
+const long HIGH_FREQ_DOWN_TICKS = 14L;
 // 25 Hz 50% signal (LOW_FREQ_UP_TICKS=2000, LOW_FREQ_DOWN_TICKS=4000):
-const long LOW_FREQ_PERIOD_TICKS = 4000;
-const long LOW_FREQ_ZERO_DELAY_TICKS = 100;
+const long LOW_FREQ_PERIOD_TICKS = 2700;//4000L;
+const long LOW_FREQ_ZERO_DELAY_TICKS = 180;//300L;
 const long LOW_FREQ_UP_A_TICKS = LOW_FREQ_ZERO_DELAY_TICKS;
-const long LOW_FREQ_DOWN_A_TICKS = LOW_FREQ_PERIOD_TICKS / 2 - LOW_FREQ_ZERO_DELAY_TICKS;
-const long LOW_FREQ_UP_B_TICKS = LOW_FREQ_PERIOD_TICKS / 2 + LOW_FREQ_ZERO_DELAY_TICKS;
+const long LOW_FREQ_DOWN_A_TICKS = LOW_FREQ_PERIOD_TICKS / 2L - LOW_FREQ_ZERO_DELAY_TICKS;
+const long LOW_FREQ_UP_B_TICKS = LOW_FREQ_PERIOD_TICKS / 2L + LOW_FREQ_ZERO_DELAY_TICKS;
 const long LOW_FREQ_DOWN_B_TICKS = LOW_FREQ_PERIOD_TICKS - LOW_FREQ_ZERO_DELAY_TICKS;
 
 bool enabled;
@@ -35,6 +39,9 @@ uint8_t tccn2;
 uint8_t ocr2a;
 uint8_t timsk2;
 
+long beepFreqTicks;
+boolean beeping;
+
 int highFreqPin;
 long highFreqTicks;
 
@@ -45,6 +52,7 @@ long lowFreqTicks;
 
 void Bell::initialize(const int highFrequencyPin, const int lowFrequencyPinA, const int lowFrequencyPinB) {
   enabled = false;
+  beeping = false;
   
   highFreqPin = highFrequencyPin;
   lowFreqPinA = lowFrequencyPinA;
@@ -59,7 +67,7 @@ void Bell::initialize(const int highFrequencyPin, const int lowFrequencyPinA, co
  * Starting Arduino Uno's timer2.
  * No prescale, 100 kHz:
  */
-void Bell::startSound() {
+void Bell::start() {
   if (enabled) {
     return;
   }
@@ -80,6 +88,8 @@ void Bell::startSound() {
   // enable timer compare interrupt
   TIMSK2 |= (1 << OCIE2A);
 
+  beepFreqTicks = 0;
+  beeping = false;
   highFreqTicks = 0;
   lowFreqTicks = 0;
   digitalLow(highFreqPin);
@@ -91,7 +101,7 @@ void Bell::startSound() {
   enabled = true;
 }
 
-void Bell::stopSound() {
+void Bell::stop() {
   if (!enabled) {
     return;
   }
@@ -100,10 +110,12 @@ void Bell::stopSound() {
   Bell::restoreRegistries();
   sei();
 
+  highFreqTicks = 0;
+  lowFreqTicks = 0;
   digitalLow(highFreqPin);
   digitalLow(lowFreqPinA);
   digitalLow(lowFreqPinB);
-
+  beeping = false;
   enabled = false;
 }
 
@@ -124,15 +136,32 @@ void Bell::restoreRegistries() {
 }
 
 ISR(TIMER2_COMPA_vect) {
-  highFreqTicks++;
+  if (beepFreqTicks == BEEP_FREQ_UP_TICKS) {
+    beeping = true;
+    highFreqTicks = 0;
+    lowFreqTicks = 0;
+  } else if (beepFreqTicks == BEEP_FREQ_DOWN_TICKS) {
+    beeping = false;
+    highFreqTicks = 0;
+    lowFreqTicks = 0;
+    digitalLow(highFreqPin);
+    digitalLow(lowFreqPinA);
+    digitalLow(lowFreqPinB);
+  }
+  if (++beepFreqTicks >= BEEP_FREQ_PERIOD_TICKS) {
+    beepFreqTicks = 0;
+  }
+  if (!beeping) return;
+  
   if (highFreqTicks == HIGH_FREQ_UP_TICKS) {
     digitalHigh(highFreqPin);
   } else if (highFreqTicks == HIGH_FREQ_DOWN_TICKS) {
     digitalLow(highFreqPin);
+  }
+  if (++highFreqTicks >= HIGH_FREQ_PERIOD_TICKS) {
     highFreqTicks = 0;
   }
   
-  lowFreqTicks++;
   if (lowFreqTicks == LOW_FREQ_UP_A_TICKS) {
     digitalHigh(lowFreqPinA);
   } else if (lowFreqTicks == LOW_FREQ_DOWN_A_TICKS) {
@@ -143,7 +172,7 @@ ISR(TIMER2_COMPA_vect) {
   } else if (lowFreqTicks == LOW_FREQ_DOWN_B_TICKS) {
     digitalLow(lowFreqPinB);
   }
-  if (lowFreqTicks == LOW_FREQ_PERIOD_TICKS) {
+  if (++lowFreqTicks >= LOW_FREQ_PERIOD_TICKS) {
     lowFreqTicks = 0;
   }
 }

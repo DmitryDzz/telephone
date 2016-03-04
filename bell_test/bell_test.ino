@@ -13,7 +13,7 @@ void setup() {
 
   Bell::initialize(HIGH_FREQUENCY_PIN, LOW_FREQUENCY_A_PIN, LOW_FREQUENCY_B_PIN);
 
-  Bell::startSound();
+  Bell::start();
   started = true;
   startMillis = millis();
   Serial.print("Started...");
@@ -21,7 +21,7 @@ void setup() {
 
 void loop() {
   if (started && (millis() - startMillis >= DURATION)) {
-    Bell::stopSound();
+    Bell::stop();
     started = false;
     Serial.println("stopped");
   }
