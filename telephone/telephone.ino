@@ -1,5 +1,5 @@
 #include "button.h"
-#include "ring.h"
+#include "bell.h"
 #include <GSM.h>
 
 using namespace telephone;
@@ -11,12 +11,11 @@ const int ASTERISK_PIN = A3;
 const int NUMBER_SIGN_PIN = A4;
 const int PLUS_PIN = A5;
 const int NO_NETWORK_LED_PIN = 13;
-const int RING_PIN = 5;
 const int AUTO_START_GSM_PIN = 8;
+const int BELL_HIGH_FREQUENCY_ACTIVITY_PIN = 2;
+const int BELL_LOW_FREQUENCY_A_PIN = 4;
+const int BELL_LOW_FREQUENCY_B_PIN = 7;
 
-// Should be 25Hz, but 31 is the arduino's minimum.
-// 1000 Hz is just for beeper.
-const int RING_FREQ = 40;
 
 Button buttonHandset(0, 1023);
 Button buttonRotate(0, 1023);
@@ -25,8 +24,6 @@ Button buttonAsterisk(0, 1023);
 Button buttonNumberSign(0, 1023);
 Button buttonPlus(0, 1023);
 Button incomingCall(false, true);
-
-Ring ring(1000, 4000);
 
 boolean isHeadsetUp;
 boolean isGettingDigit;
@@ -49,7 +46,7 @@ void pickedUpHandler(telephone::ButtonState buttonState) {
       Serial.println("Headset up");
       phoneNumber = "";
       if (hasIncomingCall) {
-        noTone(RING_PIN);
+        Bell::stop();
         if (gsmVoiceCall.answerCall()) {
           isTalking = true;
           while (isTalking && (gsmVoiceCall.getvoiceCallStatus() == TALKING)) {
@@ -127,27 +124,20 @@ void addSymbolToPhoneNumber(String symbol) {
   }
 }
 
+//todo ButtonState???
 void incomingCallHandler(telephone::ButtonState buttonState) {
   if (buttonState == PRESSED) {
     if (!isHeadsetUp) {
       hasIncomingCall = true;
-      ring.start(millis());
+      Bell::start();
       gsmVoiceCall.retrieveCallingNumber(phoneNumberChars, 20);
       Serial.print("Incoming call: ");
       Serial.println(phoneNumberChars);
     }
   } else {
     if (hasIncomingCall) {
-      ring.stop();
+      Bell::stop();
     }
-  }
-}
-
-void ringHandler(boolean state) {
-  if (state) {
-    tone(RING_PIN, RING_FREQ);
-  } else {
-    noTone(RING_PIN);
   }
 }
 
@@ -224,6 +214,8 @@ void setup() {
   Serial.println();
   Serial.println("Started");
 
+  Bell::initialize(BELL_HIGH_FREQUENCY_ACTIVITY_PIN, BELL_LOW_FREQUENCY_A_PIN, BELL_LOW_FREQUENCY_B_PIN);
+  
   pinMode(HANDSET_PIN, INPUT);
   pinMode(ROTATE_PIN, INPUT);
   pinMode(COUNTER_PIN, INPUT);
@@ -231,7 +223,6 @@ void setup() {
   pinMode(NUMBER_SIGN_PIN, INPUT);
   pinMode(PLUS_PIN, INPUT);
   pinMode(NO_NETWORK_LED_PIN, OUTPUT);
-  pinMode(RING_PIN, OUTPUT);
   pinMode(AUTO_START_GSM_PIN, OUTPUT);
   delay(100);
   digitalWrite(NO_NETWORK_LED_PIN, HIGH);
@@ -244,8 +235,6 @@ void setup() {
   buttonNumberSign.setHandler(numberSignHandler);
   buttonPlus.setHandler(plusHandler);
   incomingCall.setHandler(incomingCallHandler);
-
-  ring.setHandler(ringHandler);
   
   Serial.print("Connecting..");
   while (true) {
@@ -260,7 +249,5 @@ void setup() {
 }
 
 void loop() {
-  const long currentMillis = millis();
-  refreshButtons(currentMillis);
-  ring.refresh(currentMillis);
+  refreshButtons(millis());
 }
