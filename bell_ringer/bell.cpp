@@ -11,20 +11,15 @@
 #define digitalHigh(P) *(portOfPin(P)) |= pinMask(P)
 
 
-// Base ticks (100 kHz ticks = 160):
-const uint8_t PULSE_COUNTER = 160;
+// Base ticks (1 kHz ticks = 249):
+const uint8_t PULSE_COUNTER = 249;
 // 0.25 Hz 50% beep signal (4 seconds beep, 4 seconds silince):
-const long BEEP_FREQ_PERIOD_TICKS = 400000L;
+const long BEEP_FREQ_PERIOD_TICKS = 8000L;
 const long BEEP_FREQ_UP_TICKS = 0L;
-const long BEEP_FREQ_DOWN_TICKS = 160000L;
-// 4 kHz signal (HIGH_FREQ_UP_TICKS=5, HIGH_FREQ_DOWN_TICKS=25):
-// 4.2 kHz, 89.6% duty cycle (HIGH_FREQ_UP_TICKS=3, HIGH_FREQ_DOWN_TICKS=21):
-const long HIGH_FREQ_PERIOD_TICKS = 15L;
-const long HIGH_FREQ_UP_TICKS = 0L;
-const long HIGH_FREQ_DOWN_TICKS = 14L;
+const long BEEP_FREQ_DOWN_TICKS = 4000L;
 // 25 Hz 50% signal (LOW_FREQ_UP_TICKS=2000, LOW_FREQ_DOWN_TICKS=4000):
-const long LOW_FREQ_PERIOD_TICKS = 2700;//4000L;
-const long LOW_FREQ_ZERO_DELAY_TICKS = 180;//300L;
+const long LOW_FREQ_PERIOD_TICKS = 40L;
+const long LOW_FREQ_ZERO_DELAY_TICKS = 3L;
 const long LOW_FREQ_UP_A_TICKS = LOW_FREQ_ZERO_DELAY_TICKS;
 const long LOW_FREQ_DOWN_A_TICKS = LOW_FREQ_PERIOD_TICKS / 2L - LOW_FREQ_ZERO_DELAY_TICKS;
 const long LOW_FREQ_UP_B_TICKS = LOW_FREQ_PERIOD_TICKS / 2L + LOW_FREQ_ZERO_DELAY_TICKS;
@@ -43,7 +38,6 @@ long beepFreqTicks;
 boolean beeping;
 
 int highFreqActivityPin;
-long highFreqTicks;
 
 int lowFreqPinA;
 int lowFreqPinB;
@@ -85,14 +79,13 @@ void Bell::start() {
   OCR2A = PULSE_COUNTER;
   // turn on CTC mode
   TCCR2A |= (1 << WGM21);
-  // Set CS20 bit for no prescaler
-  TCCR2B |= (1 << CS20);
+  // Set CS22 bit for clk/64 prescaler
+  TCCR2B |= (1 << CS22);
   // enable timer compare interrupt
   TIMSK2 |= (1 << OCIE2A);
 
   beepFreqTicks = 0;
   beeping = false;
-  highFreqTicks = 0;
   lowFreqTicks = 0;
   digitalLow(highFreqActivityPin);
   digitalLow(lowFreqPinA);
@@ -112,13 +105,11 @@ void Bell::stop() {
   Bell::restoreRegistries();
   sei();
 
-  highFreqTicks = 0;
-  lowFreqTicks = 0;
+  beeping = false;
+  enabled = false;
   digitalLow(highFreqActivityPin);
   digitalLow(lowFreqPinA);
   digitalLow(lowFreqPinB);
-  beeping = false;
-  enabled = false;
 }
 
 void Bell::saveRegistries() {
@@ -140,11 +131,10 @@ void Bell::restoreRegistries() {
 ISR(TIMER2_COMPA_vect) {
   if (beepFreqTicks == BEEP_FREQ_UP_TICKS) {
     beeping = true;
-    highFreqTicks = 0;
     lowFreqTicks = 0;
+    digitalHigh(highFreqActivityPin);
   } else if (beepFreqTicks == BEEP_FREQ_DOWN_TICKS) {
     beeping = false;
-    highFreqTicks = 0;
     lowFreqTicks = 0;
     digitalLow(highFreqActivityPin);
     digitalLow(lowFreqPinA);
@@ -154,15 +144,6 @@ ISR(TIMER2_COMPA_vect) {
     beepFreqTicks = 0;
   }
   if (!beeping) return;
-  
-  if (highFreqTicks == HIGH_FREQ_UP_TICKS) {
-    digitalHigh(highFreqActivityPin);
-  } else if (highFreqTicks == HIGH_FREQ_DOWN_TICKS) {
-    digitalLow(highFreqActivityPin);
-  }
-  if (++highFreqTicks >= HIGH_FREQ_PERIOD_TICKS) {
-    highFreqTicks = 0;
-  }
   
   if (lowFreqTicks == LOW_FREQ_UP_A_TICKS) {
     digitalHigh(lowFreqPinA);

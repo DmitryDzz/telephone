@@ -1,8 +1,8 @@
 #include "bell.h"
 
-const int HIGH_FREQUENCY_PIN = 8;
-const int LOW_FREQUENCY_A_PIN = 9;
-const int LOW_FREQUENCY_B_PIN = 10;
+const int HIGH_FREQUENCY_PIN = 2;
+const int LOW_FREQUENCY_A_PIN = 4;
+const int LOW_FREQUENCY_B_PIN = 7;
 const long DURATION = 1L * 60L * 1000L;
 bool started;
 long startMillis;
@@ -20,8 +20,8 @@ void setup() {
 }
 
 void loop() {
-  delay(1000);
-  Serial.println("Hi!");
+//  delay(1000);
+//  Serial.println("Hi!");
   if (started && (millis() - startMillis >= DURATION)) {
     Bell::stop();
     started = false;
