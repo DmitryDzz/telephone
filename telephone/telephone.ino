@@ -4,7 +4,7 @@
 
 using namespace telephone;
 
-const int HANDSET_PIN = A0;
+const int HEADSET_PIN = A0;
 const int ROTATE_PIN = A1;
 const int COUNTER_PIN = A2;
 const int ASTERISK_PIN = A3;
@@ -12,12 +12,13 @@ const int NUMBER_SIGN_PIN = A4;
 const int PLUS_PIN = A5;
 const int NO_NETWORK_LED_PIN = 13;
 const int AUTO_START_GSM_PIN = 8;
-const int BELL_HIGH_FREQUENCY_ACTIVITY_PIN = 2;
-const int BELL_LOW_FREQUENCY_A_PIN = 4;
-const int BELL_LOW_FREQUENCY_B_PIN = 7;
+const int RESET_GSM_PIN = 9;
+const int BELL_HIGH_FREQUENCY_ACTIVITY_PIN = 12;
+const int BELL_LOW_FREQUENCY_A_PIN = 10;
+const int BELL_LOW_FREQUENCY_B_PIN = 11;
 
 
-Button buttonHandset(0, 1023);
+Button buttonHeadset(0, 1023);
 Button buttonRotate(0, 1023);
 Button buttonCounter(0, 1023);
 Button buttonAsterisk(0, 1023);
@@ -43,9 +44,10 @@ void pickedUpHandler(telephone::ButtonState buttonState) {
   isHeadsetUp = buttonState == PRESSED;
   if (isHeadsetUp) {
     if (!isTalking) {
-      Serial.println("Headset up");
+      debugPrintln("Headset up");
       phoneNumber = "";
       if (hasIncomingCall) {
+        debugPrintln("Stop ringing");
         Bell::stop();
         if (gsmVoiceCall.answerCall()) {
           isTalking = true;
@@ -58,7 +60,7 @@ void pickedUpHandler(telephone::ButtonState buttonState) {
       }
     }
   } else {
-    Serial.println("Headset down");
+    debugPrintln("Headset down");
     isGettingDigit = false;
     if (isTalking) {
       isTalking = false;
@@ -96,21 +98,21 @@ void rotaryCounterHandler(telephone::ButtonState buttonState) {
 
 void asteriskHandler(telephone::ButtonState buttonState) {
   if (buttonState == PRESSED) {
-    Serial.println("Asterisk pressed");
+    debugPrintln("Asterisk pressed");
     addSymbolToPhoneNumber("*");
   }
 }
 
 void numberSignHandler(telephone::ButtonState buttonState) {
   if (buttonState == PRESSED) {
-    Serial.println("Number sign pressed");
+    debugPrintln("Number sign pressed");
     addSymbolToPhoneNumber("#");
   }
 }
 
 void plusHandler(telephone::ButtonState buttonState) {
   if (buttonState == PRESSED) {
-    Serial.println("Plus pressed");
+    debugPrintln("Plus pressed");
     addSymbolToPhoneNumber("+");
   }
 }
@@ -124,18 +126,21 @@ void addSymbolToPhoneNumber(String symbol) {
   }
 }
 
-//todo ButtonState???
 void incomingCallHandler(telephone::ButtonState buttonState) {
   if (buttonState == PRESSED) {
     if (!isHeadsetUp) {
       hasIncomingCall = true;
+      debugPrintln("Start ringing");
       Bell::start();
       gsmVoiceCall.retrieveCallingNumber(phoneNumberChars, 20);
-      Serial.print("Incoming call: ");
-      Serial.println(phoneNumberChars);
+      debugPrint("Incoming call: <");
+      debugPrint(phoneNumberChars);
+      debugPrintln(">");
     }
   } else {
     if (hasIncomingCall) {
+      hasIncomingCall = false;
+      debugPrintln("Stop ringing");
       Bell::stop();
     }
   }
@@ -160,7 +165,7 @@ void makeCall() {
   if (isTalking) {
     return;
   }
-  Serial.println("Making call: " + phoneNumber);
+  debugPrintln("Making call: " + phoneNumber);
   updatePhoneNumberForRussia();
   phoneNumber.toCharArray(phoneNumberChars, phoneNumber.length() + 1);
   phoneNumber = "";
@@ -184,7 +189,7 @@ void sendDigit() {
   }
 
   String atCommand = "AT+VTS=\"" + phoneNumber + "\"";
-  Serial.println("Sending digit: " + phoneNumber + " at command: " + atCommand);
+  debugPrintln("Sending digit: " + phoneNumber + " at command: " + atCommand);
 
   theGSM3ShieldV1ModemCore.println(atCommand);
   
@@ -199,7 +204,7 @@ void updatePhoneNumberForRussia() {
 }
 
 void refreshButtons(long currentMillis) {
-  buttonHandset.refresh(analogRead(HANDSET_PIN), currentMillis);
+  buttonHeadset.refresh(analogRead(HEADSET_PIN), currentMillis);
   buttonRotate.refresh(analogRead(ROTATE_PIN), currentMillis);
   buttonCounter.refresh(analogRead(COUNTER_PIN), currentMillis);
   buttonAsterisk.refresh(analogRead(ASTERISK_PIN), currentMillis);
@@ -208,15 +213,23 @@ void refreshButtons(long currentMillis) {
   incomingCall.refresh(gsmVoiceCall.getvoiceCallStatus() == RECEIVINGCALL, currentMillis);
 }
 
+void debugPrint(String text) {
+  Serial.print(text);
+}
+
+void debugPrintln(String text) {
+  Serial.println(text);
+}
+
 void setup() {
   Serial.begin(9600);
 
-  Serial.println();
-  Serial.println("Started");
+  debugPrintln("");
+  debugPrintln("Started");
 
   Bell::initialize(BELL_HIGH_FREQUENCY_ACTIVITY_PIN, BELL_LOW_FREQUENCY_A_PIN, BELL_LOW_FREQUENCY_B_PIN);
   
-  pinMode(HANDSET_PIN, INPUT);
+  pinMode(HEADSET_PIN, INPUT);
   pinMode(ROTATE_PIN, INPUT);
   pinMode(COUNTER_PIN, INPUT);
   pinMode(ASTERISK_PIN, INPUT);
@@ -224,11 +237,21 @@ void setup() {
   pinMode(PLUS_PIN, INPUT);
   pinMode(NO_NETWORK_LED_PIN, OUTPUT);
   pinMode(AUTO_START_GSM_PIN, OUTPUT);
+  pinMode(RESET_GSM_PIN, OUTPUT);
   delay(100);
+  
   digitalWrite(NO_NETWORK_LED_PIN, HIGH);
-  digitalWrite(AUTO_START_GSM_PIN, HIGH);
 
-  buttonHandset.setHandler(pickedUpHandler);
+  // Magic spell to start GSM module automatically:
+  digitalWrite(AUTO_START_GSM_PIN, HIGH);
+  delay(1000);
+  digitalWrite(AUTO_START_GSM_PIN, LOW);
+  delay(3000);
+  digitalWrite(RESET_GSM_PIN, HIGH);
+  delay(1000);
+  digitalWrite(RESET_GSM_PIN, LOW);
+
+  buttonHeadset.setHandler(pickedUpHandler);
   buttonRotate.setHandler(rotatingHandler);
   buttonCounter.setHandler(rotaryCounterHandler);
   buttonAsterisk.setHandler(asteriskHandler);
@@ -236,16 +259,19 @@ void setup() {
   buttonPlus.setHandler(plusHandler);
   incomingCall.setHandler(incomingCallHandler);
   
-  Serial.print("Connecting..");
+  debugPrint("Connecting..");
   while (true) {
-    Serial.print(".");
+    debugPrint(".");
     if (gsmAccess.begin(SIM_PIN_NUMBER) == GSM_READY) {
-      Serial.println("done");
+      debugPrintln("done");
       break;
     }
     delay(1000);
   }
   digitalWrite(NO_NETWORK_LED_PIN, LOW);
+
+  // This makes sure the modem correctly reports incoming events:
+  gsmVoiceCall.hangCall();
 }
 
 void loop() {

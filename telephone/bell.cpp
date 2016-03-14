@@ -13,10 +13,10 @@
 
 // Base ticks (1 kHz ticks = 249):
 const uint8_t PULSE_COUNTER = 249;
-// 0.25 Hz 50% beep signal (4 seconds beep, 4 seconds silince):
-const long BEEP_FREQ_PERIOD_TICKS = 8000L;
+// 0.25 Hz 50% beep signal (3 seconds beep, 3 seconds silince):
+const long BEEP_FREQ_PERIOD_TICKS = 6000L;
 const long BEEP_FREQ_UP_TICKS = 0L;
-const long BEEP_FREQ_DOWN_TICKS = 4000L;
+const long BEEP_FREQ_DOWN_TICKS = 3000L;
 // 25 Hz 50% signal (LOW_FREQ_UP_TICKS=2000, LOW_FREQ_DOWN_TICKS=4000):
 const long LOW_FREQ_PERIOD_TICKS = 40L;
 const long LOW_FREQ_ZERO_DELAY_TICKS = 3L;
