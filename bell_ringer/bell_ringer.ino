@@ -1,8 +1,8 @@
 #include "bell.h"
 
-const int HIGH_FREQUENCY_PIN = 2;
-const int LOW_FREQUENCY_A_PIN = 4;
-const int LOW_FREQUENCY_B_PIN = 7;
+const int HIGH_FREQUENCY_PIN = 12;
+const int LOW_FREQUENCY_A_PIN = 10;
+const int LOW_FREQUENCY_B_PIN = 11;
 const long DURATION = 1L * 60L * 1000L;
 bool started;
 long startMillis;
