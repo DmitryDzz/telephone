@@ -1,6 +1,6 @@
 # Arduino based cell phone
 
-![Arduino based cell phone](https://cloud.githubusercontent.com/assets/1957839/19617626/452d96a6-983e-11e6-9e6a-f664e5fb7940.jpg)
+![Arduino based cell phone](https://cloud.githubusercontent.com/assets/1957839/19617739/fc1dbc54-9840-11e6-9539-6879ae42118d.jpg)
 
 Old rotary telephone in modern world. With Arduino UNO controller, GSM shield and rechargeable batteries.
 
